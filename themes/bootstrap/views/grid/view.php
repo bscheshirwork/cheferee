@@ -9,7 +9,7 @@
 		<div>Белые</div>
 		
 		<div style="float: left; margin: 5px;">
-		<?php echo CHtml::image(!$modelWhite->player->logo ? "/images/nologo.png" : $modelWhite->player->logo,null,Array('width'=>'64px','height'=>'64px')); ?>
+		<?php echo CHtml::image(!$modelWhite->player->logo ? "/images/nologo.png" : $modelWhite->player->logo,"",Array('width'=>'64','height'=>'64')); ?>
 		</div>
 
 		<b><?php echo CHtml::encode($modelWhite->player->getAttributeLabel('name')); ?></b>
@@ -49,7 +49,7 @@
 		<?php if(isset($modelBlack->player)){ ?>
 
 		<div style="float: right; margin: 5px;">
-		<?php echo CHtml::image(!$modelBlack->player->logo ? "/images/nologo.png" : $modelBlack->player->logo,null,Array('width'=>'64px','height'=>'64px')); ?>
+		<?php echo CHtml::image(!$modelBlack->player->logo ? "/images/nologo.png" : $modelBlack->player->logo,"",Array('width'=>'64','height'=>'64')); ?>
 		</div>
 
 		<?php echo CHtml::encode($modelBlack->player->name); ?>
@@ -79,7 +79,7 @@
 	</div>
 	
 	<?php if($model->tourDone){ ?>
-		<div class='pair-result'><a name="j<?=$model->pairId?>"></a>
+		<div class='pair-result'><a id="j<?=$model->pairId?>"></a>
 		<?php if(isset($modelWhite)&&$modelWhite->resultScore-$modelWhite->startScore==Yii::app()->params['scoreWining']){ ?>
 			<div>Белые выиграли</div>
 		<?php }elseif(isset($modelBlack)&&$modelBlack->resultScore-$modelBlack->startScore==Yii::app()->params['scoreWining']){ ?>

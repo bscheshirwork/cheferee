@@ -50,9 +50,14 @@ class Rival extends CActiveRecord
 	 */
 	public function formAndSave($playerId,$rivalId)
 	{
-		$this->playerId=$playerId;
-		$this->rivalId=$rivalId;
-		return $this->save()||Yii::log(CHtml::errorSummary($this).'!BSC! AR save() return false: '.__FILE__.'['.__LINE__.']', 'error', 'protected.models.Rival');
+		try{
+			$this->playerId=$playerId;
+			$this->rivalId=$rivalId;
+			$result=$this->save()||Yii::log(CHtml::errorSummary($this).'!BSC! AR save() return false: '.__FILE__.'['.__LINE__.']', 'error', 'protected.models.Rival');
+		}catch(Exception $e){
+			throw new CHttpException(500,'Ошибка распределения. Невозможно применить правила распределения.');
+		}
+		return $result;
 	}
 	
 	/**

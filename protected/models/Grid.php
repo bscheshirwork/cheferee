@@ -192,7 +192,7 @@ class Grid extends CActiveRecord
 			->from(Player::tableName())
 			->queryScalar();
 		$tourCount=ceil(log($playersCount,2)) + ceil(log(Yii::app()->params['accuracyCount'],2));
-		return $tourCount;
+		return (int)$tourCount;
 	}
 	
 	/**
@@ -202,7 +202,7 @@ class Grid extends CActiveRecord
 	 * @param int score - result of match
 	 * @return int $resultElo new ELO
 	 */
-	public static function getNewElo($playerElo,$rivalElo,$score)
+	public static function calcNewElo($playerElo,$rivalElo,$score)
 	{
 		//k is [10|15|30] $score is [1|0.5|0]
 		$k = ( $playerElo >= 2400 ? 10 : $playerElo >= 1000 ? 15 : 30 );//first 30 mach? so close 1000
