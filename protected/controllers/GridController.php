@@ -104,209 +104,222 @@ class GridController extends Controller
 				}
 			}
 		}else{//another tour
-			//use only grid separate for scoreGroup
 			$scoreGroups = Yii::app()->db->createCommand()
-				->selectDistinct('scoreGroup')
+				->selectDistinct('scoreGroup, count(*) count')
 				->from(Grid::tableName())
-				->where('tour=:tour and tourDone=1',[':tour'=>$id-1])
+				->where('tour=:prevTour and tourDone=1',[':prevTour'=>$id-1])
+				->group('scoreGroup')
 				->order('scoreGroup desc, resultElo desc')
-				->queryColumn();
-			foreach ($scoreGroups as $scoreGroup){
-				$criteria=new CDbCriteria;
-				$criteria->addCondition('tour=:prevTour and tourDone=1 and scoreGroup=:scoreGroup');
-				$criteria->addCondition('t.playerId NOT IN (SELECT playerId FROM '.Grid::tableName().' WHERE tour=:tour)');
-				$criteria->with=['rivals'=>['together'=>true,'index'=>'rivalId']];
-				$criteria->params=[':tour'=>$id,':prevTour'=>$id-1,':scoreGroup'=>$scoreGroup];
-				$model=Grid::model()->findAll($criteria);
-				//if an odd number of record - that the weakest goes to the next scoreGroup
-				while(!empty($model)){
-					//reset $model
-					$model=array_values($model);
-					//slice odd
-					if(fmod(count($model),2)){
-						$model2=$model[count($model)-1];
-						if($scoreGroup!=$scoreGroups[count($scoreGroups)-1]){
-							$model2->scoreGroup-=Yii::app()->params['scoreDeadHeat'];
-							$model2->save()||Yii::log(CHtml::errorSummary($model2).'!BSC! AR save() return false: '.__FILE__.'['.__LINE__.']', 'error', 'protected.controllers.GridController');
-						}else{//auto winner +1 & pull in next tour
-							$model1=new Grid;
-							//modify
-							$model1->tour=$model2->tour+1;
-							$model1->tourDone=1;
-							$model1->pairId=++$pairId;
-							$model1->resultScore=$model2->resultScore+Yii::app()->params['scoreWining'];
-							//$model1->scoreGroup=$model2->scoreGroup+Yii::app()->params['scoreWining'];
-							$model1->scoreGroup=Yii::app()->params['scoreWining'];//if only 3 group
-							$model1->resultElo=$model2->resultElo;
-							//copy
-							$model1->appendGrid($model2);
-							$model1->save()||Yii::log(CHtml::errorSummary($model1).'!BSC! AR save() return false: '.__FILE__.'['.__LINE__.']', 'error', 'protected.controllers.GridController');
-						}
-						unset($model[count($model)-1]);
-					}//if(fmod(count($model),2))
-					
-					//get the 2 keys
-					for($i=0,$maxIndex=count($model)-1,$semiIndex=count($model)/2-1,$j=$maxIndex; $i<=$semiIndex; $i++,$j=$maxIndex-$i){
-						//subcounter - if wrong criteria find next in pyramid
-						//i      j
-						// i+1   j
-						//  i+2  j
-						//   i+3 j
-						$k=$i;//asc
-						$passFlag=false;
-						while ($k<$j) {
+				->queryAll();
+			//determine the group size in the array
+			$indexMask=[];
+			$endIndex=-1;
+			$fromPrev=0;
+			$oddIndex=false;
+			foreach ($scoreGroups as $sgKey=>$scoreGroup){
+				$startIndex=$endIndex+1;
+				$endIndex=$startIndex+$fromPrev+$scoreGroup['count']-1;
+				//change "endIndex" of the current and "startIndex" of the next group if an odd number of elements in the group
+				if(fmod($endIndex-$startIndex+1,2)){
+					//auto winner index
+					if($sgKey==count($scoreGroups)-1)
+						$oddIndex=$endIndex;
+					$endIndex--;
+					$fromPrev=1;
+				}else
+					$fromPrev=0;
+				$indexMask[$scoreGroup['scoreGroup']]['startIndex']=$startIndex;
+				$indexMask[$scoreGroup['scoreGroup']]['endIndex']=$endIndex;
+			}
+			
+			$criteria=new CDbCriteria;
+			$criteria->addCondition('tour=:prevTour and tourDone=1');
+			$criteria->with=['rivals'=>['together'=>true,'index'=>'rivalId']];
+			$criteria->order='scoreGroup desc, resultElo desc';
+			$criteria->params=[':prevTour'=>$id-1];
+			$model=Grid::model()->findAll($criteria);
+			//slice odd
+			if($oddIndex){
+				$model2=$model[$oddIndex];
+				$model1=new Grid;
+				//modify
+				$model1->tour=$model2->tour+1;
+				$model1->tourDone=1;
+				$model1->pairId=++$pairId;
+				$model1->resultScore=$model2->resultScore+Yii::app()->params['scoreWining'];
+				//$model1->scoreGroup=$model2->scoreGroup+Yii::app()->params['scoreWining'];
+				$model1->scoreGroup=Yii::app()->params['scoreWining'];//if only 3 group
+				$model1->resultElo=$model2->resultElo;
+				//copy
+				$model1->appendGrid($model2);
+				$model1->save()||Yii::log(CHtml::errorSummary($model1).'!BSC! AR save() return false: '.__FILE__.'['.__LINE__.']', 'error', 'protected.controllers.GridController');
+				unset($model[$oddIndex]);
+			}
+			
+			$lIndex=0;
+			$maxIndex=count($model)-1;
+			
+			//fill grid
+			while(!empty($model)){
+				
+				$passFlag=false;
+				//"left" index
+				$lIndex=BscFor::skipEmpty($model, $lIndex, $maxIndex-1);
+				//"right" index
+
+				foreach($indexMask as $sgKey => $value)
+					if((int)$sgKey <= (int)$model[$lIndex]->scoreGroup){
+						$startIndex=max($lIndex,$value['startIndex']);
+						$rIndex=BscFor::skipEmpty($model, $value['endIndex'], $startIndex, true);
+
+						//rules
+						while ($rIndex>$startIndex) {
+							
+							$rIndex=BscFor::skipEmpty($model, $rIndex, $startIndex, true);
+							if(empty($model[$rIndex]))//bound destination, but all model is empty
+								continue 2;//foreach($indexMask as $sgKey => $value)
+							
 							//strong layer - already playing pair 
-							if(isset($model[$j]->rivals[$model[$k]->playerId])){
-								$k++;
-								//if last pair already playing
-								if(count($model)==2){
-									unset($model[$j]);
-									unset($model[$k]);
-									break 3;//while(!empty($model))
-								}
-								continue;//while ($k<$j)
+							if(isset($model[$rIndex]->rivals[$model[$lIndex]->playerId])){
+								$rIndex--;
+								continue;//while ($rIndex>$startIndex) {
 							}
+							
 							//soft layer - semicolor 3x 
-							if($model[$j]->lastColorCount>2){
-								$l=$k;
-								while ($l<$j){
-									if(isset($model[$j]->rivals[$model[$l]->playerId])){
-										$l++;
-										continue;//while ($l<$i)
+							if($model[$lIndex]->lastColorCount>2){
+								$cIndex=$rIndex;
+								while ($cIndex>$startIndex){
+									$cIndex=BscFor::skipEmpty($model, $cIndex, $startIndex, true);
+									if(empty($model[$cIndex]))//bound destination, but all model is empty
+										continue 3;//foreach($indexMask as $sgKey => $value)
+									if(isset($model[$cIndex]->rivals[$model[$lIndex]->playerId])){
+										$cIndex--;
+										continue;//while ($cIndex>$startIndex) {
 									}
-									if($model[$l]->lastColor==$model[$i]->lastColor){
-										if($model[$l]->lastColorCount>2){
-											$l++;
-											continue;//while ($l<$j)
-										}
+									if($model[$cIndex]->lastColorCount>2 && $model[$lIndex]->lastColor==$model[$cIndex]->lastColor && !$lastTourFlag){
+										$cIndex--;
+										continue;//while ($cIndex>$startIndex)
 									}
 									//color pass
-									$k=$l;
 									$passFlag=true;
-									break 2;//while ($k<$j)
-								}
+									$rIndex=$cIndex;
+									break 3;//foreach($indexMask as $sgKey => $value)
+								}//while ($cIndex>$startIndex){
+								
 								//color dont pass
 								if($lastTourFlag){//this is last tour?
 									$passFlag=true;
-									break;//while ($k<$j)
+									//$rIndex=$rIndex;
+									break 2;//foreach($indexMask as $sgKey => $value)
 								}
-								//reset
-								$k++;
-								continue;//while ($k<$j)
-								
+								//like a strong layer
+								$rIndex--;
+								continue;//while ($rIndex>$startIndex) {
+							}//if($model[$j]->lastColorCount>2){
+							
 							//notice layer - semicolor 2x
-							}elseif($model[$j]->lastColorCount>1){
-								$l=$k;
-								$m=$k+3;//delta notice
-								while ( $l<$j && $l<$m ){
-									if(isset($model[$j]->rivals[$model[$l]->playerId])){
-										$l++;
-										$m++;
-										continue;//while ( $l<$j && $l<$m )
+							if($model[$lIndex]->lastColorCount>1){
+								$cIndex=$rIndex;
+								$cBound=$cIndex-Yii::app()->params['semicolorNotice'];//delta notice
+								while ( $cIndex>$startIndex && $cIndex>$cBound ){
+									while(empty($model[$cIndex]) && $cIndex>$startIndex && $cIndex>$cBound ){
+										$cIndex--;
+										$cBound--;
 									}
-									if($model[$l]->lastColor==$model[$i]->lastColor){
-										if($model[$l]->lastColorCount>1){
-											$l++;
-											continue;//while ( $l<$j && $l<$m )
-										}
+									if(empty($model[$cIndex])){//bound destination, but all model is empty
+										//color dont pass... but its notify -> return to $rIndex
+										$passFlag=true;
+										break 3;//foreach($indexMask as $sgKey => $value)
+									}
+									if(isset($model[$cIndex]->rivals[$model[$lIndex]->playerId])){
+										$cIndex--;
+										$cBound--;
+										continue;//while ( $cIndex>$startIndex && $cIndex>$cBound ){
+									}
+									if($model[$cIndex]->lastColorCount>1 && $model[$lIndex]->lastColor==$model[$cIndex]->lastColor){
+										$cIndex--;
+										continue;//while ( $cIndex>$startIndex && $cIndex>$cBound ){
 									}
 									//color pass
-									$k=$l;
 									$passFlag=true;
-									break 2;//while ($k<$j)									
-								}
+									$rIndex=$cIndex;
+									break 3;//foreach($indexMask as $sgKey => $value)
+								}//while ( $cIndex>$startIndex && $cIndex>$cBound ){
 								
 								//color dont pass... but its notify
-								//$k=$k
 								$passFlag=true;
-								break;//while ($k<$j)
+								//$rIndex=$rIndex;
+								break 2;//foreach($indexMask as $sgKey => $value)
 								
-							}
-							//if not eny break
-							//$k=$k
+							}//if($model[$lIndex]->lastColorCount>1){
+							
+							//if not any break/continue then rIndex correct
 							$passFlag=true;
-							break;//while ($k<$j)
+							//$rIndex=$rIndex;
+							break 2;//foreach($indexMask as $sgKey => $value)
 							
-						}//while($k<$j)
+						}//while ($rIndex>$startIndex) {
+						//overfull bound
 						
-						//if $model[$j] dont have pair mark it as problem
-						//select element
-						$model1=$model[$k];
-						$model2=$model[$j];
-						//and unset in list
-						unset($model[$k]);
-						unset($model[$j]);
-						//and reset $model at start
-						if(!$passFlag){
-							if($scoreGroup!=$scoreGroups[count($scoreGroups)-1]){
-								$model2->scoreGroup-=Yii::app()->params['scoreDeadHeat'];
-								$model2->save()||Yii::log(CHtml::errorSummary($model2).'!BSC! AR save() return false: '.__FILE__.'['.__LINE__.']', 'error', 'protected.controllers.GridController');
-							}else{
-								//problem in the last scoreGroup. Is so bad.
-								//so... 
-								//may be...
-								//auto winner +1 & pull in next tour
-								$model1=new Grid;
-								//modify
-								$model1->tour=$model2->tour+1;
-								$model1->tourDone=1;
-								$model1->pairId=++$pairId;
-								$model1->resultScore=$model2->resultScore+Yii::app()->params['scoreWining'];
-								//$model1->scoreGroup=$model2->scoreGroup+Yii::app()->params['scoreWining'];
-								$model1->scoreGroup=Yii::app()->params['scoreWining'];//if only 3 group
-								$model1->resultElo=$model2->startElo;
-								//copy
-								$model1->appendGrid($model2);
-								$model1->save()||Yii::log(CHtml::errorSummary($model1).'!BSC! AR save() return false: '.__FILE__.'['.__LINE__.']', 'error', 'protected.controllers.GridController');								
-							}
-							$model=array_values($model);//reset array
-							continue 2;//while(!empty($model))
-						}
-							
-						$transaction=Yii::app()->db->beginTransaction();
-						try{
+					}//foreach($indexMask as $sgKey => $value)
+				
+				//$lIndex and $rIndex ready. $passFlag===true;
+				if(!$passFlag||$lIndex>=$rIndex||empty($model[$lIndex])||empty($rIndex)){
+					//may be last choice or error in rules / mismatch any rules
+				}
+				
+				//select element
+				$model1=$model[$lIndex];
+				$model2=$model[$rIndex];
+				//and unset in list
+				unset($model[$lIndex]);
+				unset($model[$rIndex]);				
+				
+				//fill pair
+				
+				$transaction=Yii::app()->db->beginTransaction();
+				try{
 
-							//fill new pair
-							$model3=new Grid;//from $model1
-							$model4=new Grid;//from $model2
-							//$model1->id;
-							$model3->pairId=$model4->pairId=++$pairId;;
+					//fill new pair
+					$model3=new Grid;//from $model1
+					$model4=new Grid;//from $model2
+					//$model1->id;
+					$model3->pairId=$model4->pairId=++$pairId;;
 
-							$model3->appendGrids($model1,$model2);
-							$model4->appendGrids($model2,$model1);
+					$model3->appendGrids($model1,$model2);
+					$model4->appendGrids($model2,$model1);
 
-							$model3->scoreGroup=$model1->scoreGroup;
-							$model4->scoreGroup=$model2->scoreGroup;
+					$model3->scoreGroup=$model1->scoreGroup;
+					$model4->scoreGroup=$model2->scoreGroup;
 
-							$model3->startScore=$model1->resultScore;
-							$model4->startScore=$model2->resultScore;
-							
-							$flag=$model1->lastColorCount>=$model2->lastColorCount;
-							$model3->appendColors($model1,$model2,$flag);
-							$model4->appendColors($model2,$model1,!$flag);
-							
-							$model3->tour=$model4->tour=$id;
-							//$model1->scoreGroup;
+					$model3->startScore=$model1->resultScore;
+					$model4->startScore=$model2->resultScore;
 
-							//$model1->tourDone;
-							//$model1->resultScore;
-							//$model1->resultElo;
-							$model3->save()||Yii::log(CHtml::errorSummary($model3).'!BSC! AR save() return false: '.__FILE__.'['.__LINE__.']', 'error', 'protected.controllers.GridController');
-							$model4->save()||Yii::log(CHtml::errorSummary($model4).'!BSC! AR save() return false: '.__FILE__.'['.__LINE__.']', 'error', 'protected.controllers.GridController');
-							if($model3->hasErrors()||$model4->hasErrors())
-								$transaction->rollback();
-							else 
-								$transaction->commit();
-						}catch(Exception $e){
-							$transaction->rollback();
-							throw $e;
-						}
-						//reset
-						continue 2;//while(!empty($model))
-					}//for($i=0,$maxIndex=count($model)-1,...
-				}//while(!empty($model))
-			}//foreach ($scoreGroups as $scoreGroup)
-		}
+					$flag=$model1->lastColorCount>=$model2->lastColorCount;
+					$model3->appendColors($model1,$model2,$flag);
+					$model4->appendColors($model2,$model1,!$flag);
+
+					$model3->tour=$model4->tour=$id;
+					//$model1->scoreGroup;
+
+					//$model1->tourDone;
+					//$model1->resultScore;
+					//$model1->resultElo;
+					$model3->save()||Yii::log(CHtml::errorSummary($model3).'!BSC! AR save() return false: '.__FILE__.'['.__LINE__.']', 'error', 'protected.controllers.GridController');
+					$model4->save()||Yii::log(CHtml::errorSummary($model4).'!BSC! AR save() return false: '.__FILE__.'['.__LINE__.']', 'error', 'protected.controllers.GridController');
+					if($model3->hasErrors()||$model4->hasErrors())
+						$transaction->rollback();
+					else 
+						$transaction->commit();
+				}catch(Exception $e){
+					$transaction->rollback();
+					throw new CHttpException(500,'Ошибка распределения. Невозможно применить правила распределения.');
+				}
+				
+			}//while(!empty($model)){
+			
+		}//}else{//another tour
+		
 		$this->actionTour($id);
 	}
 
@@ -332,7 +345,7 @@ class GridController extends Controller
 				//$value->scoreGroup+=Yii::app()->params['scoreDeadHeat'];
 				$value->scoreGroup=Yii::app()->params['scoreDeadHeat'];//if only 3 group
 				$value->resultElo=$value->startElo;
-				$value->resultElo=Grid::getNewElo($value->startElo,${$mask[$value->color]}->startElo,0.5);//dead heat
+				$value->resultElo=Grid::calcNewElo($value->startElo,${$mask[$value->color]}->startElo,0.5);//dead heat
 				$value->save()||Yii::log(CHtml::errorSummary($value).'!BSC! AR save() return false: '.__FILE__.'['.__LINE__.']', 'error', 'protected.controllers.GridController');
 			}
 		}elseif($mask[$winner]){
@@ -346,8 +359,8 @@ class GridController extends Controller
 			//$model2->scoreGroup+=Yii::app()->params['scoreLosing'];
 			$model2->scoreGroup=Yii::app()->params['scoreLosing'];
 			
-			$model1->resultElo=Grid::getNewElo($model1->startElo,$model2->startElo,1);//winner
-			$model2->resultElo=Grid::getNewElo($model2->startElo,$model1->startElo,0);//loser
+			$model1->resultElo=Grid::calcNewElo($model1->startElo,$model2->startElo,1);//winner
+			$model2->resultElo=Grid::calcNewElo($model2->startElo,$model1->startElo,0);//loser
 
 			$model1->save()||Yii::log(CHtml::errorSummary($model1).'!BSC! AR save() return false: '.__FILE__.'['.__LINE__.']', 'error', 'protected.controllers.GridController');
 			$model2->save()||Yii::log(CHtml::errorSummary($model2).'!BSC! AR save() return false: '.__FILE__.'['.__LINE__.']', 'error', 'protected.controllers.GridController');
@@ -400,7 +413,11 @@ class GridController extends Controller
 	{
 		$model=Grid::model()->with('player')->findAll('tour=?',[$id]);
 		$data=$this->formPairModelData($model);
-		$this->render('index',['data'=>$data,'gridIsClear'=>!Grid::getMaxPairId()]);		
+		$this->render('index',[
+				'data'=>$data,
+				'gridIsClear'=>!Grid::getMaxPairId(),
+				'maxTour'=>Grid::getApproxMaxTour(),
+			]);		
 	}
 	
 	/**

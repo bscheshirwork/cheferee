@@ -4,6 +4,7 @@
 // Yii::setPathOfAlias('local','path/to/local-folder');
 Yii::setPathOfAlias('bootstrap', dirname(__FILE__).'/../extensions/bootstrap');
 Yii::setPathOfAlias('bscheshir', dirname(__FILE__).'/../extensions/bscheshir');
+//CHtml::$closeSingleTags=true;
 
 // This is the main Web application configuration. Any writable
 // CWebApplication properties can be configured here.
@@ -20,6 +21,7 @@ return array(
 	'import'=>array(
 		'application.models.*',
 		'application.components.*',
+		'application.helpers.*',
 	),
 
 	'modules'=>array(
@@ -114,10 +116,11 @@ return array(
 	// using Yii::app()->params['paramName']
 	'params'=>array(
 		// this is used in contact page
-		'accuracyCount'=>'3',	//The number of first places reliably distributed
-		'scoreWining'=>'10',	//1.0x10 - integer format of score. Cost of wictory
-		'scoreDeadHeat'=>'5',	//0.5x10 - integer format of score. Cost of dead heat
-		'scoreLosing'=>'0',		//0 - integer format of score. Cost of lose
+		'accuracyCount'=>3,	//The number of first places reliably distributed
+		'scoreWining'=>10,	//1.0x10 - integer format of score. Cost of wictory
+		'scoreDeadHeat'=>5,	//0.5x10 - integer format of score. Cost of dead heat
+		'scoreLosing'=>0,		//0 - integer format of score. Cost of lose
+		'semicolorNotice'=>3,	//check 3 near rival for different color
 		'adminEmail'=>'bscheshir.work@gmail.com',
 		'tablenameUser'=>'user',// table name referee
 		'tablenamePlayer'=>'player',// table name player

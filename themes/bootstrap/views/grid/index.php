@@ -1,4 +1,11 @@
 <?php
+/* @var $this GridController */
+/* @var data array */
+/* @var gridIsClear bool */
+/* @var maxTour int */
+/* @var resultGrid CArrayDataProvider */
+?>
+<?php
 $this->breadcrumbs=array(
 	'Сетка турнира',
 );
@@ -18,7 +25,7 @@ $this->breadcrumbs=array(
 				));
 	?>
 
-		<div clas='pair-separator'></div>
+		<div class='pair-separator'></div>
 	<?php } ?>
 	<div class='tour-footer'></div>
 <?php } ?>
@@ -41,10 +48,10 @@ $this->breadcrumbs=array(
 				),
 			array(
 				'label'=>'Генерировать распределение игроков тура №'.($tourId+1),
-				'visible'=>!Yii::app()->user->isGuest && !$gridIsClear && $tourId,
+				'visible'=>!Yii::app()->user->isGuest && !$gridIsClear && $tourId && $maxTour>$tourId,
 				'url'=>'#',
 				'linkOptions'=>array('submit'=>array('compose','id'=>$tourId+1),
-					'confirm'=>'Вы действительно желаете генерировать сетку?')
+					'confirm'=>'Вы действительно желаете генерировать сетку? Результаты всех матчей предыдущего тура должны быть введены!')
 				),
 			array(
 				'label'=>'Удалить распределение туров, вплоть до тура №'.($tourId-1),
