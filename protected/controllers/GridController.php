@@ -147,8 +147,8 @@ class GridController extends Controller
 				$model1->tourDone=1;
 				$model1->pairId=++$pairId;
 				$model1->resultScore=$model2->resultScore+Yii::app()->params['scoreWining'];
-				//$model1->scoreGroup=$model2->scoreGroup+Yii::app()->params['scoreWining'];
-				$model1->scoreGroup=Yii::app()->params['scoreWining'];//if only 3 group
+				$model1->scoreGroup=$model2->scoreGroup+Yii::app()->params['scoreWining'];
+				//$model1->scoreGroup=Yii::app()->params['scoreWining'];//if only 3 group
 				$model1->resultElo=$model2->resultElo;
 				//copy
 				$model1->appendGrid($model2);
@@ -342,8 +342,8 @@ class GridController extends Controller
 		if(!$winner){
 			foreach ($model as $value){
 				$value->resultScore=$value->startScore+Yii::app()->params['scoreDeadHeat'];
-				//$value->scoreGroup+=Yii::app()->params['scoreDeadHeat'];
-				$value->scoreGroup=Yii::app()->params['scoreDeadHeat'];//if only 3 group
+				$value->scoreGroup+=Yii::app()->params['scoreDeadHeat'];
+				//$value->scoreGroup=Yii::app()->params['scoreDeadHeat'];//if only 3 group
 				$value->resultElo=$value->startElo;
 				$value->resultElo=Grid::calcNewElo($value->startElo,${$mask[$value->color]}->startElo,0.5);//dead heat
 				$value->save()||Yii::log(CHtml::errorSummary($value).'!BSC! AR save() return false: '.__FILE__.'['.__LINE__.']', 'error', 'protected.controllers.GridController');
@@ -352,12 +352,12 @@ class GridController extends Controller
 			
 			$model1=${'model'.ucfirst($winner)};
 			$model1->resultScore=$model1->startScore+Yii::app()->params['scoreWining'];
-			//$model1->scoreGroup+=Yii::app()->params['scoreWining'];
-			$model1->scoreGroup=Yii::app()->params['scoreWining'];
+			$model1->scoreGroup+=Yii::app()->params['scoreWining'];
+			//$model1->scoreGroup=Yii::app()->params['scoreWining'];
 			$model2=${$mask[$winner]};
 			$model2->resultScore=$model2->startScore+Yii::app()->params['scoreLosing'];
-			//$model2->scoreGroup+=Yii::app()->params['scoreLosing'];
-			$model2->scoreGroup=Yii::app()->params['scoreLosing'];
+			$model2->scoreGroup+=Yii::app()->params['scoreLosing'];
+			//$model2->scoreGroup=Yii::app()->params['scoreLosing'];
 			
 			$model1->resultElo=Grid::calcNewElo($model1->startElo,$model2->startElo,1);//winner
 			$model2->resultElo=Grid::calcNewElo($model2->startElo,$model1->startElo,0);//loser
