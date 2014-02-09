@@ -21,7 +21,7 @@ return array(
 	'import'=>array(
 		'application.models.*',
 		'application.components.*',
-		'application.helpers.*',
+		'application.components.behaviors.*',
 	),
 
 	'modules'=>array(
@@ -120,7 +120,9 @@ return array(
 		'scoreWining'=>10,	//1.0x10 - integer format of score. Cost of wictory
 		'scoreDeadHeat'=>5,	//0.5x10 - integer format of score. Cost of dead heat
 		'scoreLosing'=>0,		//0 - integer format of score. Cost of lose
-		'semicolorNotice'=>3,	//check 3 near rival for different color
+		'minSemicolorCheck'=>2,	//Number of the same color in a row when the rule applies
+		'maxSemicolorPass'=>3,	//The absolute maximum for games with one color in a row. 
+		//You may need to put unreasonably large values to undergo distribution rules in the last game.
 		'adminEmail'=>'bscheshir.work@gmail.com',
 		'tablenameUser'=>'user',// table name referee
 		'tablenamePlayer'=>'player',// table name player
