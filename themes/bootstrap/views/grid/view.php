@@ -9,7 +9,7 @@
 		<div>Белые</div>
 		
 		<div style="float: left; margin: 5px;">
-		<?php echo CHtml::image(!$modelWhite->player->logo ? "/images/nologo.png" : $modelWhite->player->logo,"",Array('width'=>'64','height'=>'64')); ?>
+		<?php echo CHtml::image(!$modelWhite->player->logo ? Yii::app()->request->baseUrl."/images/nologo.png" : $modelWhite->player->logo,"",Array('width'=>'64','height'=>'64')); ?>
 		</div>
 
 		<b><?php echo CHtml::encode($modelWhite->player->getAttributeLabel('name')); ?></b>
@@ -49,7 +49,7 @@
 		<?php if(isset($modelBlack->player)){ ?>
 
 		<div style="float: right; margin: 5px;">
-		<?php echo CHtml::image(!$modelBlack->player->logo ? "/images/nologo.png" : $modelBlack->player->logo,"",Array('width'=>'64','height'=>'64')); ?>
+		<?php echo CHtml::image(!$modelBlack->player->logo ? Yii::app()->request->baseUrl."/images/nologo.png" : $modelBlack->player->logo,"",Array('width'=>'64','height'=>'64')); ?>
 		</div>
 
 		<?php echo CHtml::encode($modelBlack->player->name); ?>
