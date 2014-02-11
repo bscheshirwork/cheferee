@@ -18,3 +18,7 @@ $this->breadcrumbs=array(
 <br />5.	Все кроме судьи не должны иметь права что-то вводить, только просматривать.
 <br />6.	Перерасчет рейтинга ELO на основании результатов турнира.
 </p>
+<br />
+<p>Решение:</p>
+<p>Исходники последней версии вы найдёте здесь: <a href="https://github.com/bscheshirwork/cheferee">https://github.com/bscheshirwork/cheferee</a>
+</p>

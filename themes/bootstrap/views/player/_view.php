@@ -6,7 +6,7 @@
 	<br />
 	
 	<div style="float: left; margin: 5px;">
-	<?php echo CHtml::image(!$data->logo ? "/images/nologo.png" : $data->logo,null,Array('width'=>'64px','height'=>'64px')); ?>
+	<?php echo CHtml::image(!$data->logo ? Yii::app()->request->baseUrl."/images/nologo.png" : $data->logo,"",Array('width'=>'64px','height'=>'64px')); ?>
 	</div>
 
 	<b><?php echo CHtml::encode($data->getAttributeLabel('name')); ?>:</b>
