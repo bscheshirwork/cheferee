@@ -59,24 +59,19 @@ return array(
 				'<controller:\w+>/<action:\w+>'=>'<controller>/<action>',
 			),
 		),
-		/*
-		'db'=>array(
-			'connectionString' => 'sqlite:'.dirname(__FILE__).'/../data/testdrive.db',
-		),
-		*/
-		// uncomment the following to use a MySQL database
+		
 		'db'=>array(
 			'connectionString' => 'mysql:host=localhost;dbname=cheferee',
 			'emulatePrepare' => true,
 			'username' => 'cheferee',
 			'password' => 'chefereeemysqlpassword',//example
 			'charset' => 'utf8',
-			
+			/*
 			'enableProfiling' => true,
 			'enableParamLogging' => true,
+			 */
 		),
-		/*
-		*/
+
 		'errorHandler'=>array(
 			// use 'site/error' action to display errors
 			'errorAction'=>'site/error',
@@ -88,16 +83,16 @@ return array(
 					'class'=>'CFileLogRoute',
 					'levels'=>'error, warning',
 				),
-//				array(
-//					'class'=>'CFileLogRoute',
-//					'levels'=>'trace',
-//				),
-				//profile
-//				array(
-//				   'class'=>'CProfileLogRoute',
-//				),
-				// uncomment the following to show log messages on web pages
-				/*
+				/* uncomment the following to trace
+				array(
+					'class'=>'CFileLogRoute',
+					'levels'=>'trace',
+				),
+				profile
+				array(
+				   'class'=>'CProfileLogRoute',
+				),
+				 * uncomment the following to show log messages on web pages
 				array(
 					'class'=>'CWebLogRoute',
 				),

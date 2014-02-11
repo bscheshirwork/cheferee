@@ -18,11 +18,6 @@ SET time_zone = "+00:00";
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
 /*!40101 SET NAMES utf8 */;
 
---
--- База данных: `cheferee`
---
-CREATE DATABASE IF NOT EXISTS `cheferee` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
-USE `cheferee`;
 
 -- --------------------------------------------------------
 
@@ -131,6 +126,8 @@ CREATE TABLE IF NOT EXISTS `grid` (
   UNIQUE KEY `pairIdPlayerId` (`pairId`,`playerId`) COMMENT 'one pair one player',
   KEY `tourTourDone` (`tour`,`tourDone`) COMMENT 'tour and tour done'
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+-- Обратите внимание: комментарии к ключам не поддерживаются в старых версиях
 
 --
 -- Триггеры `grid`
